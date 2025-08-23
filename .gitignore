@@ -1,0 +1,20 @@
+# ignore all files
+*
+
+# but don't ignore python files
+!*.py
+
+# ignore python cache folders
+__pycache__/
+
+# ignore .env and db file
+.env
+daangn.db
+
+# ignore images
+daangn_profile.png
+
+# ignore Excel files (한글명 포함)
+~$*.xlsx
+*.xlsx
+
