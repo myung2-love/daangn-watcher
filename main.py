@@ -18,6 +18,8 @@ load_dotenv()
 
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 TELEGRAM_API = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
+TELEGRAM_CHAT_IDS = os.getenv("TELEGRAM_CHAT_IDS", "")
+DEFAULT_CHAT_IDS = [cid.strip() for cid in TELEGRAM_CHAT_IDS.split(",") if cid.strip()]
 DB_PATH = "daangn.db"
 POLL_INTERVAL = int(os.getenv("POLL_INTERVAL", "20"))  # 초 단위
 
@@ -79,7 +81,9 @@ def mark_product(item_id: str, keyword: str, title: str, description: str, price
         if conn:
             conn.close()
 
-async def send_telegram(chat_ids: list[str], text: str):
+async def send_telegram(chat_ids: list[str] = None, text: str = ""):
+    if chat_ids is None or len(chat_ids) == 0:
+        chat_ids = DEFAULT_CHAT_IDS
     async with aiohttp.ClientSession() as session:
         async def send_to_one(chat_id):
             payload = {"chat_id": chat_id, "text": text, "parse_mode": "HTML"}
@@ -267,7 +271,6 @@ async def monitor_keyword(location: str, keyword: str, chat_ids: list[str], min_
 class WatchRequest(BaseModel):
     location: str
     keyword: str
-    chat_ids: list[str]
     min_price: Optional[int] = None
     max_price: Optional[int] = None
 
@@ -285,12 +288,13 @@ async def test_telegram(req: TelegramTestRequest):
 
 @app.post("/watch")
 async def watch(req: WatchRequest):
-    key = f"{req.location}:{req.keyword}:{req.chat_ids}:{req.min_price}:{req.max_price}"
+    key = f"{req.location}:{req.keyword}:{req.min_price}:{req.max_price}"
     if key in _monitor_tasks and not _monitor_tasks[key].done():
         return {"status": "already_watching"}
 
     loop = asyncio.get_event_loop()
-    task = loop.create_task(monitor_keyword(req.location, req.keyword, req.chat_ids, req.min_price, req.max_price))
+    print("DEFAULT_CHAT_IDS:", DEFAULT_CHAT_IDS)
+    task = loop.create_task(monitor_keyword(req.location, req.keyword, DEFAULT_CHAT_IDS, req.min_price, req.max_price))
     _monitor_tasks[key] = task
     return {"status": "watching", "location": req.location, "keyword": req.keyword, "min_price": req.min_price, "max_price": req.max_price}
 
@@ -303,3 +307,5 @@ async def stop_watch(req: WatchRequest):
         t.cancel()
         return {"status": "stopping"}
     return {"status": "not_found"}
+
+
