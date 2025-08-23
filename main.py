@@ -1,6 +1,6 @@
 import asyncio
 import sqlite3
-from typing import List
+from typing import List, Optional
 from urllib.parse import quote_plus
 import aiohttp
 from bs4 import BeautifulSoup
@@ -127,8 +127,14 @@ async def fetch_item_detail(url: str) -> str:
         return ""
 
 # 크롤링 (당근 JSON-LD 파싱)
-async def fetch_search_results(location: str, keyword: str) -> List[dict]:
-    url = f"https://www.daangn.com/kr/buy-sell/?in={location}&search={quote_plus(keyword)}&only_on_sale=true"
+async def fetch_search_results(location: str, keyword: str, min_price: Optional[int], max_price: Optional[int]) -> List[dict]:
+    price_param = ""
+    if min_price is not None or max_price is not None:
+        min_price_val = min_price if min_price is not None else 0
+        max_price_val = max_price if max_price is not None else 999999999
+        price_param = f"&price={min_price_val}__{max_price_val}"
+
+    url = f"https://www.daangn.com/kr/buy-sell/?in={location}&search={quote_plus(keyword)}&only_on_sale=true{price_param}"
     headers = {
         "User-Agent": "Mozilla/5.0"
     }
@@ -213,11 +219,11 @@ async def fetch_search_results(location: str, keyword: str) -> List[dict]:
 
 
 # 모니터링
-async def monitor_keyword(location: str, keyword: str, chat_ids: list[str]):
+async def monitor_keyword(location: str, keyword: str, chat_ids: list[str], min_price: Optional[int], max_price: Optional[int]):
     try:
         while True:
             try:
-                results = await fetch_search_results(location, keyword)
+                results = await fetch_search_results(location, keyword, min_price, max_price)
                 for it in results:
                     # 상품 등록 시간 문자열
                     pull_up_text = it.get("pull_up_time_text", "")
@@ -262,6 +268,8 @@ class WatchRequest(BaseModel):
     location: str
     keyword: str
     chat_ids: list[str]
+    min_price: Optional[int] = None
+    max_price: Optional[int] = None
 
 class TelegramTestRequest(BaseModel):
     chat_ids: list[str]
@@ -277,19 +285,19 @@ async def test_telegram(req: TelegramTestRequest):
 
 @app.post("/watch")
 async def watch(req: WatchRequest):
-    key = f"{req.location}:{req.keyword}:{req.chat_ids}"
+    key = f"{req.location}:{req.keyword}:{req.chat_ids}:{req.min_price}:{req.max_price}"
     if key in _monitor_tasks and not _monitor_tasks[key].done():
         return {"status": "already_watching"}
 
     loop = asyncio.get_event_loop()
-    task = loop.create_task(monitor_keyword(req.location, req.keyword, req.chat_ids))
+    task = loop.create_task(monitor_keyword(req.location, req.keyword, req.chat_ids, req.min_price, req.max_price))
     _monitor_tasks[key] = task
-    return {"status": "watching", "location": req.location, "keyword": req.keyword}
+    return {"status": "watching", "location": req.location, "keyword": req.keyword, "min_price": req.min_price, "max_price": req.max_price}
 
 
 @app.post("/stop")
 async def stop_watch(req: WatchRequest):
-    key = f"{req.location}:{req.keyword}:{req.chat_id}"
+    key = f"{req.location}:{req.keyword}:{req.chat_id}:{req.min_price}:{req.max_price}"
     t = _monitor_tasks.get(key)
     if t:
         t.cancel()
