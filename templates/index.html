@@ -31,12 +31,23 @@
 
     <div class="mb-6">
         <label class="block text-gray-700 font-semibold mb-2">시/도 선택</label>
-        <select id="city-select" class="w-full border border-gray-300 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-orange-400">
-            <option value="">선택</option>
-            {% for city in locations.keys() %}
-                <option value="{{ city }}">{{ city }}</option>
-            {% endfor %}
-        </select>
+        <div class="relative">
+            <select id="city-select" 
+                class="w-full border border-gray-300 rounded-xl px-4 pr-10 py-3 leading-tight 
+                       focus:outline-none focus:ring-2 focus:ring-orange-400 appearance-none">
+                <option value="">선택</option>
+                {% for city in locations.keys() %}
+                    <option value="{{ city }}">{{ city }}</option>
+                {% endfor %}
+            </select>
+            <!-- 커스텀 꺽쇠 아이콘 -->
+            <div class="absolute inset-y-0 right-3 flex items-center pointer-events-none">
+                <svg class="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" stroke-width="2" 
+                     viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/>
+                </svg>
+            </div>
+        </div>
     </div>
 
     <div class="mb-6">
@@ -79,10 +90,18 @@
         container.innerHTML = "";
         keywords.forEach(k => {
             const chip = document.createElement("span");
-            chip.className = "keyword-chip";
-            chip.textContent = k;
-            chip.title = "클릭 시 제거";
-            chip.onclick = () => removeKeyword(k);
+            chip.className = "keyword-chip flex items-center space-x-1";
+            
+            const text = document.createElement("span");
+            text.textContent = k;
+
+            const close = document.createElement("button");
+            close.innerHTML = "&times;";
+            close.className = "ml-2 text-white font-bold focus:outline-none";
+            close.onclick = () => removeKeyword(k);
+
+            chip.appendChild(text);
+            chip.appendChild(close);
             container.appendChild(chip);
         });
     }
