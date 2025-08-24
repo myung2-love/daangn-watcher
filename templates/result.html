@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>스캔 결과</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+    body { font-family: 'Nanum Gothic', 'Roboto', sans-serif; background-color: #FFF7ED; }
+    .result-card {
+        background: white;
+        border-radius: 1rem;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        padding: 1rem;
+        margin-bottom: 1.5rem;
+        transition: transform 0.2s;
+    }
+    .result-card:hover { transform: scale(1.02); }
+</style>
+</head>
+<body class="min-h-screen p-8 flex justify-center items-start">
+<div class="w-full max-w-3xl">
+    <h1 class="text-3xl font-bold text-orange-600 mb-6 text-center drop-shadow-md">스캔 결과</h1>
+
+    {% for item in results %}
+    <div class="result-card">
+        <h2 class="text-lg font-semibold text-orange-500 mb-2">{{ item.keyword }}</h2>
+        <pre class="text-sm bg-orange-50 p-3 rounded border overflow-x-auto">{{ item.response | tojson(indent=2) }}</pre>
+    </div>
+    {% endfor %}
+
+    <a href="/" class="block w-full text-center py-3 mt-4 bg-gradient-to-r from-orange-400 to-orange-500 hover:from-orange-500 hover:to-orange-600 text-white font-semibold rounded-2xl shadow-lg transition transform hover:scale-105">다시 입력</a>
+</div>
+</body>
+</html>
+

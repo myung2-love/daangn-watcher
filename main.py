@@ -4,9 +4,13 @@ from typing import List, Optional
 from urllib.parse import quote_plus
 import aiohttp
 from bs4 import BeautifulSoup
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
+from fastapi.responses import HTMLResponse
+from fastapi.staticfiles import StaticFiles
+from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
 from contextlib import asynccontextmanager
+import httpx
 import os
 import json
 import re
@@ -19,6 +23,7 @@ load_dotenv()
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 TELEGRAM_API = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
 TELEGRAM_CHAT_IDS = os.getenv("TELEGRAM_CHAT_IDS", "")
+BASE_URL = os.getenv("BASE_URL")
 DEFAULT_CHAT_IDS = [cid.strip() for cid in TELEGRAM_CHAT_IDS.split(",") if cid.strip()]
 DB_PATH = "daangn.db"
 POLL_INTERVAL = int(os.getenv("POLL_INTERVAL", "20"))  # 초 단위
@@ -30,6 +35,11 @@ async def lifespan(app: FastAPI):
     # 종료 시점에 할 작업 있으면 여기에
 
 app = FastAPI(lifespan=lifespan)
+
+# static 폴더와 templates 폴더 설정
+app.mount("/static", StaticFiles(directory="static"), name="static")
+templates = Jinja2Templates(directory="templates")
+
 _monitor_tasks = {}
 
 KST = timezone(timedelta(hours=9))  # 한국 표준시
@@ -293,6 +303,28 @@ async def test_telegram(req: TelegramTestRequest):
         return {"status": "failed", "detail": "Telegram send error"}
     return {"status": "success", "telegram_response": result}
 
+@app.get("/", response_class=HTMLResponse)
+async def read_index(request: Request):
+    locations = {
+        "서울특별시": [],
+        "부산광역시": [],
+        "대구광역시": [],
+        "인천광역시": [],
+        "광주광역시": [],
+        "대전광역시": [],
+        "울산광역시": [],
+        "세종특별자치시": [],
+        "경기도": [],
+        "강원도": [],
+        "충청북도": [],
+        "충청남도": [],
+        "전라북도": [],
+        "전라남도": [],
+        "경상북도": [],
+        "경상남도": [],
+        "제주특별자치도": []
+    }
+    return templates.TemplateResponse("index.html", {"request": request, "locations": locations})
 
 @app.post("/watch")
 async def watch(req: WatchRequest):
