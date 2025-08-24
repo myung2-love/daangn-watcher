@@ -377,6 +377,15 @@ async def scan_products(req: ScanRequest):
     except Exception as e:
         return {"status": "error", "detail": str(e)}
 
+@app.get("/active")
+async def active_watches():
+    result = {}
+    for key, task in _monitor_tasks.items():
+        if not task.done():
+            loc, kw, *_ = key.split(":")
+            result[key] = {"location": loc, "keyword": kw}
+    return result
+
 @app.post("/stop")
 async def stop_watch(req: WatchRequest):
     key = f"{req.location}:{req.keyword}:{req.chat_id}:{req.min_price}:{req.max_price}"
