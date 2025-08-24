@@ -84,6 +84,7 @@ def mark_product(item_id: str, keyword: str, title: str, description: str, price
 async def send_telegram(chat_ids: list[str] = None, text: str = ""):
     if chat_ids is None or len(chat_ids) == 0:
         chat_ids = DEFAULT_CHAT_IDS
+
     async with aiohttp.ClientSession() as session:
         async def send_to_one(chat_id):
             payload = {"chat_id": chat_id, "text": text, "parse_mode": "HTML"}
@@ -274,6 +275,13 @@ class WatchRequest(BaseModel):
     min_price: Optional[int] = None
     max_price: Optional[int] = None
 
+class ScanRequest(BaseModel):
+    location: str
+    keyword: str
+    days: int = 1 # 기본값 1일 이내
+    min_price: Optional[int] = None
+    max_price: Optional[int] = None
+
 class TelegramTestRequest(BaseModel):
     chat_ids: list[str]
     text: str
@@ -298,6 +306,44 @@ async def watch(req: WatchRequest):
     _monitor_tasks[key] = task
     return {"status": "watching", "location": req.location, "keyword": req.keyword, "min_price": req.min_price, "max_price": req.max_price}
 
+@app.post("/scan")
+async def scan_products(req: ScanRequest):
+    try:
+        results = await fetch_search_results(req.location, req.keyword, req.min_price, req.max_price)
+
+        now_kst = datetime.now(KST)
+        cutoff_time = now_kst - timedelta(days=req.days)
+
+        sent_items = []
+
+        for it in results:
+            pull_up_time = it.get("pull_up_time_text")
+            if not pull_up_time or not isinstance(pull_up_time, datetime):
+                continue
+
+            # n일 이내 상품만 필터링
+            if pull_up_time >= cutoff_time:
+                price_int = int(float(it["price"])) if it["price"] else 0
+                text = (
+                    f"🔔 <b>{it['title']}</b>\n"
+                    f"가격: {price_int}원\n"
+                    f"동네: {it['location']}\n"
+                    f"검색 키워드: {req.keyword}\n"
+                    f"게시글 업로드 시간: {pull_up_time.strftime('%Y년 %-m월 %-d일 %H시 %M분 %S초')}\n"
+                    f"상세 설명: {it['description']}\n"
+                    f"구매 URL: {it['url']}"
+                )
+                await send_telegram(DEFAULT_CHAT_IDS, text)
+                sent_items.append(id["id"])
+
+        return {
+            "status": "success",
+            "sent_count": len(sent_items),
+            "sent_ids": sent_items
+        }
+
+    except Exception as e:
+        return {"status": "error", "detail": str(e)}
 
 @app.post("/stop")
 async def stop_watch(req: WatchRequest):
@@ -307,5 +353,3 @@ async def stop_watch(req: WatchRequest):
         t.cancel()
         return {"status": "stopping"}
     return {"status": "not_found"}
-
-
