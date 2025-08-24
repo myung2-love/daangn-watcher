@@ -388,7 +388,7 @@ async def active_watches():
 
 @app.post("/stop")
 async def stop_watch(req: WatchRequest):
-    key = f"{req.location}:{req.keyword}:{req.chat_id}:{req.min_price}:{req.max_price}"
+    key = f"{req.location}:{req.keyword}:{req.min_price}:{req.max_price}"
     t = _monitor_tasks.get(key)
     if t:
         t.cancel()
