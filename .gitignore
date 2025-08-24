@@ -4,6 +4,10 @@
 # but don't ignore python files
 !*.py
 
+# don't ignore templates folder (and its contents)
+!templates/
+!templates/**
+
 # ignore python cache folders
 __pycache__/
 
