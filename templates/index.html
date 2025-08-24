@@ -126,18 +126,32 @@ function selectSearchType(type) {
   const btnWatch = document.getElementById('btn-watch');
   const daysContainer = document.getElementById('days-input-container');
   const searchBtn = document.getElementById('search-btn');
+  const addBtn = document.querySelector("#keyword-input + button"); // 키워드 추가 버튼
+  const keywordChips = document.querySelectorAll(".keyword-chip");  // 현재 입력된 키워드들
 
   if(type === 'scan') {
     btnScan.className = "flex-1 py-3 rounded-xl border border-orange-400 bg-orange-100 text-orange-700 font-semibold transition transform hover:scale-105";
     btnWatch.className = "flex-1 py-3 rounded-xl border border-gray-300 bg-gray-100 text-gray-700 font-semibold transition transform hover:scale-105";
     daysContainer.style.display = 'block';
     searchBtn.className = "w-full py-3 bg-gradient-to-r from-orange-400 to-orange-500 text-white font-bold rounded-2xl shadow-lg transition transform hover:scale-105";
+    addBtn.className = "bg-gradient-to-r from-orange-400 to-orange-500 hover:from-orange-500 hover:to-orange-600 text-white px-5 font-semibold";
+
+    keywordChips.forEach(chip => {
+      chip.style.background = "linear-gradient(90deg, #FB923C, #F97316)"; // 주황
+    });
+
     searchBtn.onclick = runScan;
   } else {
     btnScan.className = "flex-1 py-3 rounded-xl border border-gray-300 bg-gray-100 text-gray-700 font-semibold transition transform hover:scale-105";
     btnWatch.className = "flex-1 py-3 rounded-xl border border-green-400 bg-green-100 text-green-700 font-semibold transition transform hover:scale-105";
     daysContainer.style.display = 'none';
     searchBtn.className = "w-full py-3 bg-gradient-to-r from-green-400 to-green-500 text-white font-bold rounded-2xl shadow-lg transition transform hover:scale-105";
+    addBtn.className = "bg-gradient-to-r from-green-400 to-green-500 hover:from-green-500 hover:to-green-600 text-white px-5 font-semibold";
+
+    keywordChips.forEach(chip => {
+      chip.style.background = "linear-gradient(90deg, #34D399, #10B981)"; // 초록
+    });
+
     searchBtn.onclick = runWatch;
   }
 }
