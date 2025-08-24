@@ -111,6 +111,13 @@
         renderKeywords();
     }
 
+    document.getElementById("keyword-input").addEventListener("keydown", function(e) {
+        if (e.key === "Enter") {
+            e.preventDefault(); // 폼 전송 방지
+            addKeyword();
+        }
+    });
+
     document.getElementById("scan-form").addEventListener("submit", function(e) {
         document.getElementById("keywords-hidden").value = keywords.join(",");
         document.getElementById("city-hidden").value = document.getElementById("city-select").value;
