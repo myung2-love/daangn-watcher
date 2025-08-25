@@ -171,6 +171,13 @@ function renderKeywords() {
   keywords.forEach(k => {
     const chip = document.createElement("span");
     chip.className = "keyword-chip flex items-center space-x-1";
+
+    if(currentType === 'scan') {
+      chip.style.background = "linear-gradient(90deg, #FB923C, #F97316)"; // 주황
+    } else {
+      chip.style.background = "linear-gradient(90deg, #34D399, #10B981)"; // 초록
+    }
+
     const text = document.createElement("span");
     text.textContent = k;
     const close = document.createElement("button");
