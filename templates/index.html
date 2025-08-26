@@ -256,8 +256,13 @@ function resetForm() {
   renderKeywords();
 }
 
-async function stopWatch(city, keyword) {
-  const payload = { location: city, keyword: keyword };
+async function stopWatch(city, keyword, minPrice = null, maxPrice = null) {
+  const payload = {
+        location: city,
+        keyword: keyword,
+        min_price: minPrice,
+        max_price: maxPrice
+    };
   const res = await fetch("/stop", {
     method: "POST",
     headers: { "Content-Type": "application/json" },

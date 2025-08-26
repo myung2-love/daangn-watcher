@@ -382,8 +382,16 @@ async def active_watches():
     result = {}
     for key, task in _monitor_tasks.items():
         if not task.done():
-            loc, kw, *_ = key.split(":")
-            result[key] = {"location": loc, "keyword": kw}
+            parts = key.split(":")
+            loc, kw = parts[0], parts[1]
+            min_price = int(parts[2]) if len(parts) > 2 else None
+            max_price = int(parts[3]) if len(parts) > 3 else None
+            result[key] = {
+                "location": loc,
+                "keyword": kw,
+                "min_price": min_price,
+                "max_price": max_price
+            }
     return result
 
 @app.post("/stop")
