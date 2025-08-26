@@ -359,33 +359,39 @@ async def watch(req: WatchRequest):
 
 @app.post("/scan")
 async def scan_products(req: ScanRequest):
+    """시/도 단위 요청 → 동 코드 단위 검색 실행"""
     try:
-        results = await fetch_search_results(req.location, req.keyword, req.min_price, req.max_price)
-
-        now_kst = datetime.now(KST)
-        cutoff_time = now_kst - timedelta(days=req.days)
+        dong_codes_lists = LOCATIONS.get(req.location, {}).values()
+        dong_codes = [code for sublist in dong_codes_lists for code in sublist]
 
         sent_items = []
 
-        for it in results:
-            pull_up_time = it.get("pull_up_time_text")
-            if not pull_up_time or not isinstance(pull_up_time, datetime):
-                continue
+        for dong_code in dong_codes:
+            # 각 동 코드 단위로 fetch_search_results 실행
+            results = await fetch_search_results(dong_code, req.keyword, req.min_price, req.max_price)
 
-            # n일 이내 상품만 필터링
-            if pull_up_time >= cutoff_time:
-                price_int = int(float(it["price"])) if it["price"] else 0
-                text = (
-                    f"🔔 <b>{it['title']}</b>\n"
-                    f"가격: {price_int}원\n"
-                    f"동네: {it['location']}\n"
-                    f"검색 키워드: {req.keyword}\n"
-                    f"게시글 업로드 시간: {pull_up_time.strftime('%Y년 %-m월 %-d일 %H시 %M분 %S초')}\n"
-                    f"상세 설명: {it['description']}\n"
-                    f"구매 URL: {it['url']}"
-                )
-                await send_telegram(DEFAULT_CHAT_IDS, text)
-                sent_items.append(id["id"])
+            now_kst = datetime.now(KST)
+            cutoff_time = now_kst - timedelta(days=req.days)
+
+            for it in results:
+                pull_up_time = it.get("pull_up_time_text")
+                if not pull_up_time or not isinstance(pull_up_time, datetime):
+                    continue
+
+                # n일 이내 상품만 필터링
+                if pull_up_time >= cutoff_time:
+                    price_int = int(float(it["price"])) if it["price"] else 0
+                    text = (
+                        f"🔔 <b>{it['title']}</b>\n"
+                        f"가격: {price_int}원\n"
+                        f"동네: {it['location']}\n"
+                        f"검색 키워드: {req.keyword}\n"
+                        f"게시글 업로드 시간: {pull_up_time.strftime('%Y년 %-m월 %-d일 %H시 %M분 %S초')}\n"
+                        f"상세 설명: {it['description']}\n"
+                        f"구매 URL: {it['url']}"
+                    )
+                    await send_telegram(DEFAULT_CHAT_IDS, text)
+                    sent_items.append(it["id"])
 
         return {
             "status": "success",
