@@ -43,7 +43,7 @@ templates = Jinja2Templates(directory="templates")
 _monitor_tasks = {}
 
 KST = timezone(timedelta(hours=9))  # 한국 표준시
-server_start_time = datetime.now(KST) - timedelta(days=3) # timedelta(days=?) 값을 빼는 건 테스트 목적입니다.
+server_start_time = datetime.now(KST) - timedelta(days=0) # timedelta(days=?) 값을 빼는 건 테스트 목적입니다.
 
 # DB 초기화
 def init_db():
