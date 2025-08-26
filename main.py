@@ -17,6 +17,7 @@ import re
 from datetime import datetime, timezone, timedelta
 import dateutil.parser
 from dotenv import load_dotenv
+from location import LOCATIONS
 
 load_dotenv()
 
@@ -41,6 +42,7 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="templates")
 
 _monitor_tasks = {}
+_active_watches = {}  # {"서울특별시:keyword:min:max": [dong_code,...]}
 
 KST = timezone(timedelta(hours=9))  # 한국 표준시
 server_start_time = datetime.now(KST) - timedelta(days=0) # timedelta(days=?) 값을 빼는 건 테스트 목적입니다.
@@ -328,15 +330,32 @@ async def read_index(request: Request):
 
 @app.post("/watch")
 async def watch(req: WatchRequest):
-    key = f"{req.location}:{req.keyword}:{req.min_price}:{req.max_price}"
-    if key in _monitor_tasks and not _monitor_tasks[key].done():
+    """시/도 단위 요청 → 동 코드 단위 모니터링 등록"""
+    watch_key = f"{req.location}:{req.keyword}:{req.min_price}:{req.max_price}"
+
+    # 이미 시/도 단위로 등록되어 있다면 중복 방지
+    if watch_key in _active_watches:
         return {"status": "already_watching"}
 
+    registered = []
+    dong_codes_lists = LOCATIONS.get(req.location, {}).values()
+    dong_codes = [code for sublist in dong_codes_lists for code in sublist]
     loop = asyncio.get_event_loop()
-    print("DEFAULT_CHAT_IDS:", DEFAULT_CHAT_IDS)
-    task = loop.create_task(monitor_keyword(req.location, req.keyword, DEFAULT_CHAT_IDS, req.min_price, req.max_price))
-    _monitor_tasks[key] = task
-    return {"status": "watching", "location": req.location, "keyword": req.keyword, "min_price": req.min_price, "max_price": req.max_price}
+
+    for dong_code in dong_codes:
+        key = f"{dong_code}:{req.keyword}:{req.min_price}:{req.max_price}"
+        if key in _monitor_tasks and not _monitor_tasks[key].done():
+            registered.append(key)
+            continue
+
+        task = loop.create_task(monitor_keyword(dong_code, req.keyword, DEFAULT_CHAT_IDS, req.min_price, req.max_price))
+        _monitor_tasks[key] = task
+        registered.append(key)
+
+    # 시/도 단위로 등록 기록
+    _active_watches[watch_key] = dong_codes
+
+    return {"status": "watching", "registered_tasks": registered, "keyword": req.keyword, "min_price": req.min_price, "max_price": req.max_price}
 
 @app.post("/scan")
 async def scan_products(req: ScanRequest):
@@ -379,26 +398,43 @@ async def scan_products(req: ScanRequest):
 
 @app.get("/active")
 async def active_watches():
+    """프론트에는 시/도 단위로 표시"""
     result = {}
     for key, task in _monitor_tasks.items():
         if not task.done():
-            parts = key.split(":")
-            loc, kw = parts[0], parts[1]
-            min_price = int(parts[2]) if len(parts) > 2 else None
-            max_price = int(parts[3]) if len(parts) > 3 else None
-            result[key] = {
-                "location": loc,
+            dong_code, kw, min_price, max_price = key.split(":")
+            location = next(
+                (loc for loc, dongs in LOCATIONS.items() if dong_code in [c for sublist in dongs.values() for c in sublist]),
+                "알 수 없음"
+            )
+            min_price_val = int(min_price) if min_price != "None" else None
+            max_price_val = int(max_price) if max_price != "None" else None
+            # 프론트용 key는 시/도 단위
+            result[f"{location}:{kw}:{min_price_val}:{max_price_val}"] = {
+                "location": location,
                 "keyword": kw,
-                "min_price": min_price,
-                "max_price": max_price
+                "min_price": min_price_val,
+                "max_price": max_price_val
             }
     return result
 
 @app.post("/stop")
 async def stop_watch(req: WatchRequest):
-    key = f"{req.location}:{req.keyword}:{req.min_price}:{req.max_price}"
-    t = _monitor_tasks.get(key)
-    if t:
-        t.cancel()
-        return {"status": "stopping"}
-    return {"status": "not_found"}
+    """시/도 단위 요청 시 해당 시/도 내 모든 동 코드 모니터링 중지"""
+    watch_key = f"{req.location}:{req.keyword}:{req.min_price}:{req.max_price}"
+    stopped = []
+
+    dong_codes = _active_watches.get(watch_key, [])
+    for dong_code in dong_codes:
+        key = f"{dong_code}:{req.keyword}:{req.min_price}:{req.max_price}"
+        t = _monitor_tasks.get(key)
+        if t:
+            t.cancel()
+            stopped.append(key)
+            del _monitor_tasks[key]
+
+    # 시/도 단위 기록 삭제
+    if watch_key in _active_watches:
+        del _active_watches[watch_key]
+
+    return {"status": "stopped", "tasks": stopped}

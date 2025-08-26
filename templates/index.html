@@ -241,8 +241,23 @@ async function runWatch() {
       body: JSON.stringify(payload)
     });
     const data = await res.json();
+
     console.log("WATCH 결과:", data);
+
+    // 이미 모니터링 중인 경우
+    if(data.status === "already_watching") {
+      // 예쁘게 알림 띄우기 (Tailwind alert 느낌)
+      const container = document.createElement("div");
+      container.className = "fixed top-4 right-4 bg-yellow-200 border-l-4 border-yellow-500 text-yellow-700 px-4 py-3 rounded shadow-md animate-slide-in";
+      container.innerHTML = `<strong class="font-bold">알림</strong>
+                             <span class="block">이미 '${city} - ${kw}' 키워드가 모니터링 중입니다.</span>`;
+      document.body.appendChild(container);
+
+      // 3초 후 자동 사라지게
+      setTimeout(() => container.remove(), 3000);
+    }
   }
+
   loadActiveWatches();
   resetForm();
 }
